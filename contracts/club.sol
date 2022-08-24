@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 contract club {
     NFT nft;
     TOKEN token;
-
+    ColllectionName specialNFT;
     struct member {
         address _address;
         bool adult;
@@ -17,19 +17,24 @@ contract club {
 
     uint index;
 
-    constructor() {
+    constructor( string  memory uri) {
         nft = new NFT();
+        specialNFT = new ColllectionName();
         token = new TOKEN();
         members[msg.sender] = member({_address: msg.sender, adult: true});
 
         arrayMembers.push(members[msg.sender]);
 
-        nft.safeMint(msg.sender);
+        specialNFT.safeMint(msg.sender, uri);
         token.mint(msg.sender, 100);
     }
 
     function nft_address() public view returns (address) {
         return address(nft);
+    }
+
+    function speshl_nft_address() public view returns (address) {
+        return address(specialNFT);
     }
 
     modifier isAdult() {
@@ -40,7 +45,7 @@ contract club {
     function addMember(
         address _address,
         bool _adult,
-        string memory
+        string  memory uri
     ) public isAdult {
         require(
             members[_address]._address == address(0),
@@ -48,8 +53,11 @@ contract club {
         );
         members[_address] = member({_address: _address, adult: _adult});
         arrayMembers.push(members[_address]);
-
-        nft.safeMint(_address);
+        if(keccak256(abi.encodePacked(uri)) == keccak256(abi.encodePacked(""))){
+            nft.safeMint(_address);
+        } else {
+            specialNFT.safeMint(msg.sender, uri);
+        }
         token.mint(_address, 100);
     }
 
@@ -102,5 +110,38 @@ contract TOKEN is ERC20, Ownable {
 
     function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
+    }
+}
+
+
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+
+contract ColllectionName is ERC721, ERC721URIStorage, Ownable {
+    using Counters for Counters.Counter;
+
+    Counters.Counter private _tokenIdCounter;
+
+    constructor() ERC721("colllection name", "cln") {}
+
+    function safeMint(address to, string memory uri) public onlyOwner {
+        uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, uri);
+    }
+
+    // The following functions are overrides required by Solidity.
+
+    function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
+        super._burn(tokenId);
+    }
+
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override(ERC721, ERC721URIStorage)
+        returns (string memory)
+    {
+        return super.tokenURI(tokenId);
     }
 }
